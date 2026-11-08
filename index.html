@@ -1,0 +1,855 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nima Mirkhani</title>
+<meta name="description" content="Nima Mirkhani, PhD — computational neuroscientist at the University of Oxford. Steering brains back to healthy dynamics with model-guided stimulation.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+html,body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+/* Layout: one dark reading column. A neuron runs down the left edge: the research vision is the stimulus, PhD and postdoc are dendrites receiving it, the research programme is the soma integrating them, then axon (output), synapse (transmission), next neuron (contact). Deliberately dark-only. */
+:root{
+  --bg:#03050a; --panel:#080d17; --line:#16203a; --fg:#e2e8f2; --muted:#7a87a0; --faint:#4a5670;
+  --signal:#6be0ee; --pulse:#f5a54a; --path:#e0707e;
+  --font-display:"Spectral", Georgia, "Times New Roman", serif;
+  --font-body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{
+  background:var(--bg); color:var(--fg); font-family:var(--font-body);
+  font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+}
+::selection{background:color-mix(in srgb, var(--signal) 30%, transparent)}
+a{color:var(--signal); text-underline-offset:3px}
+a:focus-visible, button:focus-visible, summary:focus-visible, [tabindex]:focus-visible{outline:2px solid var(--pulse); outline-offset:3px; border-radius:3px}
+#net{position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:0}
+.wrap{position:relative; z-index:1; max-width:1080px; margin-inline:auto; padding-left:64px}
+.mono{font-family:var(--font-mono); font-size:.76rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+h1,h2,h3{font-family:var(--font-display); font-weight:600; text-wrap:balance; margin:0; line-height:1.12}
+h2{font-size:clamp(1.6rem, 3vw, 2.15rem); font-weight:500}
+h3{font-size:1.2rem}
+p{margin:0}
+
+.node{display:inline-flex; align-items:baseline; flex-wrap:wrap; gap:4px 10px; font-family:var(--font-mono); font-size:.76rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.node b{color:var(--signal); font-weight:500}
+.node .role{color:var(--faint)}
+
+.top{display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; padding-block:22px}
+.top .mark{font-family:var(--font-display); font-size:1.1rem; font-weight:600; color:var(--fg); text-decoration:none}
+.top nav{display:flex; gap:20px; flex-wrap:wrap}
+.top nav a{font-family:var(--font-mono); font-size:.74rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); text-decoration:none}
+.top nav a:hover{color:var(--fg)}
+
+/* hero */
+.hero{padding-block:44px 72px; display:grid; gap:24px}
+.who{font-family:var(--font-display); font-size:1.25rem; color:var(--fg)}
+.who span{color:var(--muted); font-family:var(--font-body); font-size:1rem}
+.hero h1{font-size:clamp(2.6rem, 7.4vw, 5.2rem); font-weight:500; letter-spacing:-.015em; max-width:15ch}
+.hero h1 em{font-style:italic; color:var(--signal)}
+.lede{font-size:clamp(1.05rem, 1.6vw, 1.2rem); max-width:62ch}
+.lede .muted{color:var(--muted)}
+.panel{background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden}
+.panel-head{display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:12px 16px; border-bottom:1px solid var(--line)}
+.panel-head .live{display:inline-flex; align-items:center; gap:8px}
+.dot{width:8px; height:8px; border-radius:50%; background:var(--pulse); box-shadow:0 0 0 3px color-mix(in srgb, var(--pulse) 22%, transparent), 0 0 12px var(--pulse); flex:none}
+.sim-grid{display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}
+.sim-cell{min-width:0; display:grid; grid-template-rows:auto 1fr}
+.sim-cell + .sim-cell{border-left:1px solid var(--line)}
+.cell-label{padding:10px 16px 0; display:flex; justify-content:space-between; gap:8px}
+.cell-label .arrow{color:var(--faint)}
+#sigCanvas, #stateCanvas{display:block; width:100%; height:270px}
+.controls{display:flex; flex-wrap:wrap; gap:14px 18px; align-items:center; padding:14px 16px 16px; border-top:1px solid var(--line)}
+.prob{flex:1 1 260px; display:grid; gap:6px; min-width:0}
+.prob .lbls{display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:.76rem; font-variant-numeric:tabular-nums}
+.prob .lbls .p{color:var(--path)} .prob .lbls .h{color:var(--signal)}
+.pbar{height:8px; border-radius:999px; overflow:hidden; display:flex; background:var(--line)}
+.pbar span{display:block; height:100%; transition:width .25s linear}
+#pPath{background:var(--path)} #pHealth{background:var(--signal)}
+.btns{display:flex; flex-wrap:wrap; gap:10px}
+.btn{font:500 .9rem var(--font-body); color:var(--fg); background:transparent; border:1px solid var(--line); border-radius:999px; padding:8px 16px; cursor:pointer; display:inline-flex; align-items:center; gap:8px; white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:color-mix(in srgb, var(--pulse) 14%, transparent); border-color:color-mix(in srgb, var(--pulse) 55%, transparent); color:#ffd9a8}
+.btn.primary:hover{background:color-mix(in srgb, var(--pulse) 24%, transparent)}
+.btn[aria-pressed="false"] .dot{background:var(--faint); box-shadow:none}
+.stats{font-variant-numeric:tabular-nums}
+.stats b{color:var(--fg); font-weight:500}
+.caption{font-size:.86rem; color:var(--muted); max-width:74ch}
+.scroll-hint{color:var(--faint)}
+
+section{padding-block:72px; position:relative}
+.sec-head{display:grid; gap:12px; margin-bottom:34px; max-width:66ch}
+.sec-head p{color:var(--muted)}
+
+/* dendrites: experience */
+.dendrites{display:grid; gap:20px}
+.exp{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:22px 24px; display:grid; grid-template-columns:minmax(0,15rem) minmax(0,1fr); gap:12px 32px}
+.exp .meta{display:grid; gap:6px; align-content:start}
+.exp .when{font-family:var(--font-mono); font-size:.8rem; color:var(--signal); font-variant-numeric:tabular-nums}
+.exp .where{color:var(--muted); font-size:.92rem}
+.exp .feeds{font-family:var(--font-display); font-style:italic; font-size:1.12rem; line-height:1.4; margin-bottom:10px}
+.exp ul{margin:0; padding-left:18px; display:grid; gap:6px; color:var(--muted); font-size:.95rem}
+.exp ul b{color:var(--fg); font-weight:500}
+.award{color:var(--pulse)}
+
+/* soma: research */
+.themes{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:10px; overflow:hidden}
+.theme{background:var(--panel); padding:24px; display:grid; gap:8px; align-content:start}
+.theme .tag{color:var(--signal)}
+.theme p{color:var(--muted); max-width:52ch}
+.methods{margin-top:28px; display:flex; flex-wrap:wrap; gap:8px}
+.methods span{font-family:var(--font-mono); font-size:.76rem; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:5px 12px; background:var(--bg)}
+
+/* axon: output */
+.train-wrap{overflow-x:auto}
+#train{display:block; width:100%; min-width:600px; height:auto}
+#train .spike{cursor:pointer}
+#train .spike:focus{outline:none}
+.legend{display:flex; gap:18px; flex-wrap:wrap; padding:12px 16px; border-bottom:1px solid var(--line)}
+.legend span{display:inline-flex; align-items:center; gap:8px}
+.legend svg{display:block}
+.pub-detail{padding:18px 16px 20px; border-top:1px solid var(--line); display:grid; gap:6px; min-height:128px}
+.pub-detail .t{font-family:var(--font-display); font-size:1.2rem; line-height:1.3}
+.pub-detail .a{color:var(--muted); font-size:.92rem}
+.pub-list{list-style:none; margin:32px 0 0; padding:0; display:grid; border-top:1px solid var(--line)}
+.pub-list li{display:grid; grid-template-columns:4.4rem minmax(0,1fr); gap:16px; padding:16px 0; border-bottom:1px solid var(--line)}
+.pub-list .y{font-family:var(--font-mono); font-size:.84rem; color:var(--signal); font-variant-numeric:tabular-nums}
+.pub-list .ti{font-weight:500}
+.pub-list .au, .pub-list .ve{font-size:.9rem; color:var(--muted)}
+.pub-list .ve{font-style:italic}
+.pub-list b, .pub-detail b{color:var(--fg); font-weight:600}
+details.earlier{margin-top:28px; border:1px solid var(--line); border-radius:10px; background:var(--panel)}
+details.earlier summary{cursor:pointer; padding:14px 16px; display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; list-style:none}
+details.earlier summary::-webkit-details-marker{display:none}
+details.earlier summary .chev{font-family:var(--font-mono); color:var(--muted); font-size:.8rem}
+details.earlier[open] summary{border-bottom:1px solid var(--line)}
+.earlier ul{list-style:none; margin:0; padding:6px 16px 10px; display:grid}
+.earlier li{display:grid; grid-template-columns:3.6rem minmax(0,1fr); gap:14px; padding:10px 0; border-bottom:1px solid var(--line); font-size:.9rem}
+.earlier li:last-child{border-bottom:0}
+.earlier .y{font-family:var(--font-mono); color:var(--faint); font-variant-numeric:tabular-nums}
+.earlier .ve{color:var(--muted); font-style:italic}
+
+/* synapse: talks */
+.cols{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:40px}
+.cols h3{margin-bottom:14px}
+.items{list-style:none; margin:0; padding:0; display:grid; gap:16px}
+.items li{display:grid; gap:2px; font-size:.94rem}
+.items .when{font-family:var(--font-mono); font-size:.74rem; color:var(--muted); letter-spacing:.04em; font-variant-numeric:tabular-nums}
+.items .note{color:var(--muted); font-size:.88rem}
+
+/* next neuron: contact */
+.contact{display:grid; gap:20px; padding-bottom:40px}
+.contact h2{font-size:clamp(2rem, 5vw, 3.2rem)}
+.email-row{display:flex; gap:12px; flex-wrap:wrap; align-items:center}
+.email{font-family:var(--font-mono); font-size:clamp(.95rem, 2.4vw, 1.2rem); user-select:all; overflow-wrap:anywhere}
+.links{display:flex; gap:24px; flex-wrap:wrap}
+footer{position:relative; z-index:1; max-width:1080px; margin-inline:auto; padding:28px 0 40px 64px; color:var(--faint); font-size:.84rem; display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap}
+
+@media (max-width: 860px){
+  .sim-grid{grid-template-columns:minmax(0,1fr)}
+  .sim-cell + .sim-cell{border-left:0; border-top:1px solid var(--line)}
+  .exp{grid-template-columns:minmax(0,1fr)}
+  .cols{grid-template-columns:minmax(0,1fr); gap:36px}
+}
+@media (max-width: 640px){
+  .wrap, footer{padding-left:30px}
+  #sigCanvas, #stateCanvas{height:220px}
+  .themes{grid-template-columns:minmax(0,1fr)}
+  .hero{padding-block:28px 56px}
+  section{padding-block:56px}
+  .top nav{gap:14px}
+  .exp{padding:18px}
+}
+</style>
+</head>
+<body>
+<canvas id="net" aria-hidden="true"></canvas>
+
+<div class="wrap" id="wrap">
+  <header class="top">
+    <a class="mark" href="#vision">N. Mirkhani</a>
+    <nav aria-label="Sections">
+      <a href="#experience">Experience</a>
+      <a href="#research">Research</a>
+      <a href="#output">Publications</a>
+      <a href="#talks">Talks</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
+
+  <div class="hero" id="vision">
+    <div class="node" data-node><b>01</b><span>Stimulus</span><span class="role">· research vision</span></div>
+    <p class="who">Nima Mirkhani, PhD <span>· Computational neuroscientist, University of Oxford</span></p>
+    <h1>Steering brains back to <em>healthy dynamics</em>.</h1>
+    <p class="lede">Brain disorders can trap neural activity in unhealthy states. I want to read those states from the signals we can record, such as EEG and fMRI, and use models to design stimulation that works as a well-timed nudge, guiding the brain into a healthier state. <span class="muted">Not forcing it there. Helping it switch.</span></p>
+
+    <div class="panel" role="group" aria-labelledby="sim-title">
+      <div class="panel-head">
+        <span class="mono live" id="sim-title"><span class="dot" aria-hidden="true"></span>Closed-loop state guidance · simulation</span>
+        <span class="mono">record → decode → perturb</span>
+      </div>
+      <div class="sim-grid">
+        <div class="sim-cell">
+          <div class="cell-label mono"><span>Recorded signals</span><span class="arrow">decode →</span></div>
+          <canvas id="sigCanvas" aria-label="Three EEG channels and two fMRI network signals. In the unhealthy state EEG is large and synchronised; after a successful switch it becomes smaller and more varied, and the fMRI networks swap activity slowly."></canvas>
+        </div>
+        <div class="sim-cell">
+          <div class="cell-label mono"><span>Inferred brain state</span><span class="arrow">state space</span></div>
+          <canvas id="stateCanvas" aria-label="A landscape with two basins, an unhealthy attractor and a healthy attractor, separated by a barrier. A dot with an uncertainty halo shows the decoded state; stimulation pushes it toward the healthy basin."></canvas>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="prob" aria-live="polite">
+          <div class="lbls"><span class="p" id="pPathTxt">Unhealthy 95%</span><span class="h" id="pHealthTxt">Healthy 5%</span></div>
+          <div class="pbar" aria-hidden="true"><span id="pPath" style="width:95%"></span><span id="pHealth" style="width:5%"></span></div>
+        </div>
+        <div class="btns">
+          <button class="btn primary" id="stimBtn" type="button">Stimulate now</button>
+          <button class="btn" id="loopBtn" type="button" aria-pressed="true"><span class="dot" aria-hidden="true"></span><span id="loopLbl">Closed loop on</span></button>
+          <button class="btn" id="resetBtn" type="button">Reset</button>
+        </div>
+        <span class="mono stats">Pulses <b id="nPulse">0</b> · Switches <b id="nSwitch">0</b></span>
+      </div>
+    </div>
+    <p class="caption">An illustrative model, not patient data. The true state is never seen directly: it is decoded from EEG and fMRI, with uncertainty. A single pulse only switches the state if it arrives at the right moment in the brain's own cycle. Turn the closed loop off and try timing it yourself.</p>
+    <p class="mono scroll-hint">Scroll to follow the signal ↓</p>
+  </div>
+
+  <section id="experience" aria-labelledby="exp-h">
+    <div class="sec-head">
+      <div class="node" data-node><b>02</b><span>Dendrites</span><span class="role">· receiving the input</span></div>
+      <h2 id="exp-h">Two branches of training feed one question</h2>
+      <p>My postdoc and PhD both ask how to guide a complex living system with a well-designed external input.</p>
+    </div>
+    <div class="dendrites">
+      <article class="exp" data-branch>
+        <div class="meta">
+          <span class="when">May 2023 – now</span>
+          <h3>Postdoctoral Neuroscientist</h3>
+          <span class="where">Brain Network Dynamics Unit, University of Oxford</span>
+        </div>
+        <div>
+          <p class="feeds">How the brain responds to a perturbation, from the first millisecond to lasting change.</p>
+          <ul>
+            <li><b>Dynamical-systems models</b> that predict neuronal population responses to phase-locked stimulation, validated against recordings</li>
+            <li><b>Predictive-coding models</b> of longer-term network change after stimulation</li>
+            <li>Analyses of single-cell and population time series to test plasticity models</li>
+            <li>Co-led a proposal on adaptive neuromodulation for long-lasting effects, and contributed to a UK neurotechnology roadmap</li>
+          </ul>
+        </div>
+      </article>
+      <article class="exp" data-branch>
+        <div class="meta">
+          <span class="when">2018 – 2022</span>
+          <h3>PhD, Biomedical Engineering</h3>
+          <span class="where">ETH Zurich</span>
+          <span class="award" style="font-size:.9rem">ETH Medal for outstanding doctoral thesis</span>
+        </div>
+        <div>
+          <p class="feeds">How to steer living agents with external fields, precisely and only where needed.</p>
+          <ul>
+            <li><b>Torque-focusing</b>: spatially selective magnetic control of living microrobots for cancer therapy</li>
+            <li>Model-guided experiments linking simulations to in vitro and in vivo results</li>
+            <li>Built mouse-scale magnetic instrumentation and ran in vivo studies</li>
+          </ul>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="research" aria-labelledby="research-h">
+    <div class="sec-head">
+      <div class="node" data-node><b>03</b><span>Soma</span><span class="role">· integrating the inputs</span></div>
+      <h2 id="research-h">How a well-timed nudge changes the brain, now and later</h2>
+      <p>Four connected lines of work, from the instant a pulse arrives to the network changes that follow.</p>
+    </div>
+    <div class="themes">
+      <div class="theme"><span class="mono tag">Instantaneous response</span><h3>Phase-locked stimulation</h3><p>Dynamical-systems models of coupled oscillators that predict how a neuronal population responds to pulses delivered at a specific phase of its rhythm, validated against biological recordings.</p></div>
+      <div class="theme"><span class="mono tag">Long-term adaptation</span><h3>Plasticity after stimulation</h3><p>Predictive-coding models of how repeated stimulation reshapes connectivity, tested with analyses of single-cell recordings and population time series.</p></div>
+      <div class="theme"><span class="mono tag">Learning rules</span><h3>Dendrites as distributed predictors</h3><p>Extending predictive-coding models of associative memory with dendritic predictors, and measuring what that means for robustness and information loss.</p></div>
+      <div class="theme"><span class="mono tag">Translation</span><h3>Subject-specific stimulation</h3><p>Turning models into plans for non-invasive stimulation such as TMS, including adaptive, closed-loop protocols designed for long-lasting effects.</p></div>
+    </div>
+    <div class="methods" aria-label="Methods">
+      <span>Dynamical systems</span><span>Neural mass models</span><span>Predictive coding</span><span>Parameter fitting</span><span>Model comparison</span><span>Python · MATLAB · R</span><span>SimNIBS</span><span>TMS</span>
+    </div>
+  </section>
+
+  <section id="output" aria-labelledby="output-h">
+    <div class="sec-head">
+      <div class="node" data-node><b>04</b><span>Axon</span><span class="role">· output</span></div>
+      <h2 id="output-h">Output since joining Oxford</h2>
+      <p>Each paper and talk is an action potential on one membrane trace. Select a spike to read it.</p>
+    </div>
+    <div class="panel">
+      <div class="legend mono">
+        <span><svg width="18" height="16" viewBox="0 0 18 16" aria-hidden="true"><path d="M1 13 L6 13 L8 1 L10 15 L13 13 L17 13" fill="none" stroke="var(--signal)" stroke-width="1.6"/></svg>Paper</span>
+        <span><svg width="18" height="16" viewBox="0 0 18 16" aria-hidden="true"><path d="M1 13 L6 13 L8 6 L10 15 L13 13 L17 13" fill="none" stroke="var(--pulse)" stroke-width="1.6"/></svg>Talk or seminar</span>
+      </div>
+      <div class="train-wrap"><svg id="train" viewBox="0 0 800 180" role="group" aria-label="Membrane trace of papers and talks, 2023 to 2026"></svg></div>
+      <div class="pub-detail" id="pubDetail" aria-live="polite"></div>
+    </div>
+    <ul class="pub-list" id="pubList"></ul>
+    <details class="earlier">
+      <summary><span class="mono">Earlier work · ETH Zurich &amp; University of Tehran · 11 papers</span><span class="chev">Show</span></summary>
+      <ul id="earlierList"></ul>
+    </details>
+  </section>
+
+  <section id="talks" aria-labelledby="talks-h">
+    <div class="sec-head">
+      <div class="node" data-node><b>05</b><span>Synapse</span><span class="role">· transmission</span></div>
+      <h2 id="talks-h">Passing it on</h2>
+    </div>
+    <div class="cols">
+      <div>
+        <h3>Talks &amp; seminars</h3>
+        <ul class="items">
+          <li><span class="when">2026 · University of Surrey · invited</span><span>From Instantaneous Modulation of Neural Oscillations to Long-Term Adaptation</span><span class="note">Surrey Sleep Research Centre</span></li>
+          <li><span class="when">2026 · Naples</span><span>Understanding connectivity-driven response to phase-locked stimulation through predictive plasticity</span><span class="note">European Conference on Brain Stimulation in Mental Health</span></li>
+          <li><span class="when">2025 · University of Leeds · invited</span><span>How Mathematical Models Help Predict and Optimize Brain Stimulation</span><span class="note">Department of Applied Mathematics</span></li>
+          <li><span class="when">2024 · Dublin</span><span>Mathematical model of coupled oscillators to predict the effects of phase-locked stimulation</span><span class="note">International Conference on Mathematical Neuroscience</span></li>
+        </ul>
+      </div>
+      <div>
+        <h3>Teaching &amp; mentoring</h3>
+        <ul class="items">
+          <li><span class="when">2023 – now · Department of Neuroscience</span><span>Tutor, MSc Neuroscience, Data Science and Statistics</span><span class="note">Quantitative thinking, data analysis and clear interpretation of results</span></li>
+          <li><span class="when">2023 – now · Kellogg College</span><span>College Advisor</span><span class="note">Academic guidance for students in the college system</span></li>
+          <li><span class="when">2019 – 2022 · ETH Zurich</span><span>Supervisor of Master's projects and theses</span></li>
+        </ul>
+      </div>
+      <div>
+        <h3>Training</h3>
+        <ul class="items">
+          <li><span class="when">2025 · Copenhagen</span><span>Brain Stimulation Week</span><span class="note">Danish Research Centre for Magnetic Resonance</span></li>
+          <li><span class="when">2024 · Cambridge</span><span>Shaping the Future of Closed-loop Neuromodulation</span></li>
+          <li><span class="when">2023 · Zurich</span><span>Computational Psychiatry Course</span><span class="note">University of Zurich &amp; ETH Zurich</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="contact" aria-labelledby="contact-h">
+    <div class="contact">
+      <div class="node" data-node><b>06</b><span>Next neuron</span><span class="role">· you</span></div>
+      <h2 id="contact-h">The signal has arrived. Let's talk.</h2>
+      <p style="color:var(--muted); max-width:60ch">I'm happy to hear about collaborations, seminars and positions in computational neuromodulation and closed-loop brain stimulation.</p>
+      <div class="email-row">
+        <span class="email" id="email">nima.mirkhani@ndcn.ox.ac.uk</span>
+        <button class="btn" id="copyBtn" type="button">Copy email</button>
+      </div>
+      <div class="links">
+        <a href="https://scholar.google.com/scholar?q=%22Nima+Mirkhani%22" target="_blank" rel="noopener">Google Scholar</a>
+        <a href="https://www.linkedin.com/search/results/all/?keywords=Nima%20Mirkhani" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="https://www.ndcn.ox.ac.uk/research/brain-network-dynamics-unit" target="_blank" rel="noopener">Brain Network Dynamics Unit</a>
+      </div>
+    </div>
+  </section>
+</div>
+<footer>
+  <span>© 2026 Nima Mirkhani · Oxford, UK</span>
+  <span class="mono" style="color:var(--faint)">Signals drawn live in your browser</span>
+</footer>
+
+<script>
+(() => {
+  const TAU = Math.PI * 2;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const C = {};
+  const cs = getComputedStyle(document.documentElement);
+  ['signal','pulse','path','fg','muted','faint','line','panel','bg'].forEach(k => C[k] = cs.getPropertyValue('--' + k).trim());
+  const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+  const gauss = () => Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(TAU * Math.random());
+  const sig = z => 1 / (1 + Math.exp(-z));
+
+  function fit(canvas, w, h) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (w === undefined) { const r = canvas.getBoundingClientRect(); w = r.width; h = r.height; }
+    canvas.width = Math.max(1, Math.round(w * dpr));
+    canvas.height = Math.max(1, Math.round(h * dpr));
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx, w, h, dpr };
+  }
+
+  /* ================= Hero: decoded brain states + guiding stimulation ================= */
+  const sigC = document.getElementById('sigCanvas'), stC = document.getElementById('stateCanvas');
+  let SG = fit(sigC), ST = fit(stC), landscape = null;
+  const DT = 1 / 60, N = 420;
+  const V = (x, y) => (x * x - 1) ** 2 + 0.6 * y * y;
+  const S = {
+    x: -1.38, y: 0, th: Math.PI, vx: 0, ex: -1.3, ey: 0, exPrev: -1.3, hs: 0,
+    eegP: 0, eegH: [0, 1.3, 2.6], nz: [0, 0, 0], netA: 1, netB: 0,
+    buf: [], trail: [], loop: true, cool: 0, relapse: 9, relapseFlash: 0, kickFlash: 0,
+    pulses: 0, switches: 0, healthy: false, t: 0
+  };
+
+  function kick(v) { S.vx = v; }
+  function stimulate() { kick(3.4); S.pulses++; S.kickFlash = 0.5; S.pendingPulse = true; }
+
+  function stepSim() {
+    S.t += DT;
+    // true latent dynamics
+    if (Math.abs(S.vx) > 0.05) { S.x += S.vx * DT; S.vx *= Math.exp(-DT / 0.25); }
+    else S.vx = 0;
+    if (S.x < 0) {
+      // unhealthy attractor: a stereotyped, self-sustaining cycle
+      S.th += TAU * 0.42 * DT;
+      const px = -1 + 0.38 * Math.cos(S.th), py = 0.55 * Math.sin(S.th);
+      if (!S.vx) S.x += (px - S.x) * 2.6 * DT;
+      S.y += (py - S.y) * 2.6 * DT + 0.03 * gauss() * Math.sqrt(DT);
+    } else {
+      // healthy attractor: flexible, more variable activity
+      const dVdx = 4 * S.x * (S.x * S.x - 1);
+      S.x += -0.9 * dVdx * DT + 0.3 * gauss() * Math.sqrt(DT);
+      S.y += -1.1 * S.y * DT + 0.34 * gauss() * Math.sqrt(DT);
+    }
+    S.x = Math.max(-1.9, Math.min(1.9, S.x)); S.y = Math.max(-1.25, Math.min(1.25, S.y));
+    const nowHealthy = S.x > 0.35 || (S.healthy && S.x > -0.1);
+    if (nowHealthy && !S.healthy) { S.switches++; S.relapse = 8 + Math.random() * 4; }
+    if (!nowHealthy && S.healthy && S.x < -0.35) S.healthy = false;
+    if (nowHealthy) S.healthy = true;
+    // occasional relapse back to the unhealthy state
+    if (S.healthy) { S.relapse -= DT; if (S.relapse <= 0) { kick(-7.5); S.relapseFlash = 1.4; S.relapse = 99; } }
+
+    // decoded estimate (lags the truth, noisy)
+    S.exPrev = S.ex;
+    S.ex += (S.x - S.ex) * 4 * DT + 0.02 * gauss();
+    S.ey += (S.y - S.ey) * 4 * DT + 0.02 * gauss();
+    S.trail.push([S.ex, S.ey]); if (S.trail.length > 140) S.trail.shift();
+    const pH = sig(5 * S.ex);
+
+    // closed loop: fire when the decoded state is near the barrier side of its cycle
+    S.cool -= DT;
+    if (S.loop && pH < 0.35 && S.cool <= 0 && S.ex > -0.8 && S.ex > S.exPrev) { stimulate(); S.cool = 1.3; }
+
+    // observed signals generated from the latent state
+    S.hs += (sig(5 * S.x) - S.hs) * DT / 0.3;
+    const h = S.hs;
+    S.eegP += TAU * 1.7 * DT;
+    const eeg = S.eegH.map((p, c) => {
+      S.eegH[c] += TAU * (2.6 + 0.55 * c) * DT;
+      S.nz[c] = S.nz[c] * 0.82 + gauss() * 0.18;
+      return (1 - h) * 1.0 * Math.sin(S.eegP + 0.15 * c) + h * 0.42 * Math.sin(S.eegH[c]) + (0.1 + 0.18 * h) * S.nz[c];
+    });
+    S.netA += ((1 - h) - S.netA) * DT / 2.4 + 0.004 * gauss();
+    S.netB += (h - S.netB) * DT / 2.4 + 0.004 * gauss();
+    S.buf.push({ eeg, a: S.netA, b: S.netB, p: !!S.pendingPulse });
+    S.pendingPulse = false;
+    if (S.buf.length > N) S.buf.shift();
+    S.kickFlash = Math.max(0, S.kickFlash - DT);
+    S.relapseFlash = Math.max(0, S.relapseFlash - DT);
+  }
+  function reset() {
+    Object.assign(S, { x: -1.38, y: 0, th: Math.PI, vx: 0, ex: -1.3, ey: 0, healthy: false, cool: 1.5, relapse: 99, pulses: 0, switches: 0 });
+    S.trail = [];
+  }
+  for (let i = 0; i < N + 60; i++) stepSim();
+  S.pulses = 0; S.switches = 0;
+
+  function drawSignals() {
+    const { ctx, w, h } = SG;
+    ctx.clearRect(0, 0, w, h);
+    const L = 54, R = w - 10, top = 14, eegH = (h - top) * 0.6, fH = (h - top) * 0.4;
+    const xs = i => L + i / (N - 1) * (R - L);
+    ctx.font = '10px "IBM Plex Mono", monospace';
+    // stimulation marks
+    S.buf.forEach((s, i) => {
+      if (!s.p) return;
+      const x = xs(i);
+      ctx.strokeStyle = rgba(C.pulse, 0.85); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, h - 8); ctx.stroke();
+      ctx.fillStyle = C.pulse; ctx.beginPath(); ctx.moveTo(x - 4, top - 2); ctx.lineTo(x + 4, top - 2); ctx.lineTo(x, top + 5); ctx.fill();
+    });
+    // EEG
+    const names = ['Fz', 'Cz', 'Pz'], rowH = eegH / 3;
+    names.forEach((n, c) => {
+      const yc = top + rowH * (c + 0.5);
+      ctx.fillStyle = C.faint; ctx.fillText(n, 14, yc + 3);
+      ctx.strokeStyle = C.signal; ctx.lineWidth = 1.3; ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      S.buf.forEach((s, i) => { const y = yc - s.eeg[c] * rowH * 0.36; i ? ctx.lineTo(xs(i), y) : ctx.moveTo(xs(i), y); });
+      ctx.stroke(); ctx.globalAlpha = 1;
+    });
+    ctx.fillStyle = C.muted; ctx.fillText('EEG', 14, top + 2);
+    // divider
+    const fTop = top + eegH;
+    ctx.strokeStyle = C.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(10, fTop); ctx.lineTo(w - 10, fTop); ctx.stroke();
+    ctx.fillStyle = C.muted; ctx.fillText('fMRI', 14, fTop + 14);
+    // BOLD network signals
+    const fy = v => fTop + fH - 10 - v * (fH - 30);
+    [['a', C.path, 'Net A'], ['b', C.signal, 'Net B']].forEach(([k, col, lbl], j) => {
+      ctx.strokeStyle = col; ctx.lineWidth = 2;
+      ctx.beginPath();
+      S.buf.forEach((s, i) => { const y = fy(Math.max(0, Math.min(1, s[k]))); i ? ctx.lineTo(xs(i), y) : ctx.moveTo(xs(i), y); });
+      ctx.stroke();
+      ctx.fillStyle = col; ctx.fillText(lbl, 14, fTop + 32 + j * 14);
+    });
+  }
+
+  function buildLandscape() {
+    const { w, h, dpr } = ST;
+    const off = document.createElement('canvas');
+    off.width = Math.round(w * dpr); off.height = Math.round(h * dpr);
+    const o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const cell = 3;
+    for (let px = 0; px < w; px += cell) for (let py = 0; py < h; py += cell) {
+      const [x, y] = toState(px + cell / 2, py + cell / 2);
+      const v = V(x, y), depth = Math.max(0, 1 - v / 1.1);
+      let a = depth * 0.2;
+      if ((v * 5) % 1 < 0.08 && v < 2.2) a += 0.07;
+      if (a < 0.01) continue;
+      o.fillStyle = rgba(x < 0 ? C.path : C.signal, a);
+      o.fillRect(px, py, cell, cell);
+    }
+    landscape = off;
+  }
+  const PAD = 18;
+  const toPx = (x, y) => [PAD + (x + 2) / 4 * (ST.w - 2 * PAD), ST.h / 2 + 10 - y / 1.35 * (ST.h / 2 - PAD - 6)];
+  const toState = (px, py) => [(px - PAD) / (ST.w - 2 * PAD) * 4 - 2, -(py - ST.h / 2 - 10) / (ST.h / 2 - PAD - 6) * 1.35];
+
+  function drawState() {
+    const { ctx, w, h } = ST;
+    ctx.clearRect(0, 0, w, h);
+    if (landscape) ctx.drawImage(landscape, 0, 0, w, h);
+    ctx.font = '10px "IBM Plex Mono", monospace';
+    // barrier
+    const [bx] = toPx(0, 0);
+    ctx.strokeStyle = C.faint; ctx.setLineDash([3, 5]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(bx, 34); ctx.lineTo(bx, h - 10); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = C.faint; ctx.textAlign = 'center'; ctx.fillText('BARRIER', bx, h - 2);
+    // basin labels
+    const [ux] = toPx(-1, 0), [hx] = toPx(1, 0);
+    ctx.fillStyle = C.path; ctx.fillText('UNHEALTHY', ux, 26);
+    ctx.fillStyle = C.signal; ctx.fillText('HEALTHY', hx, 26);
+    ctx.textAlign = 'start';
+    // trail of decoded states
+    S.trail.forEach((p, i) => {
+      const [x, y] = toPx(p[0], p[1]);
+      ctx.fillStyle = rgba(p[0] < 0 ? C.path : C.signal, (i / S.trail.length) * 0.45);
+      ctx.beginPath(); ctx.arc(x, y, 1.6, 0, TAU); ctx.fill();
+    });
+    // decoded state with uncertainty
+    const [x, y] = toPx(S.ex, S.ey);
+    const unc = 0.1 + 0.24 * (1 - Math.abs(Math.tanh(2.5 * S.ex)));
+    const r = unc / 4 * (w - 2 * PAD);
+    const col = S.ex < 0 ? C.path : C.signal;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r + 6);
+    g.addColorStop(0, rgba(col, 0.35)); g.addColorStop(1, rgba(col, 0));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r + 6, 0, TAU); ctx.fill();
+    ctx.strokeStyle = rgba(col, 0.5); ctx.setLineDash([2, 3]);
+    ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = '#ffffff'; ctx.shadowColor = col; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, TAU); ctx.fill(); ctx.shadowBlur = 0;
+    // stimulation arrow
+    if (S.kickFlash > 0 || S.vx > 0.3) {
+      const len = 26 + 30 * Math.min(1, S.vx / 3.4);
+      ctx.strokeStyle = C.pulse; ctx.fillStyle = C.pulse; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(x + 8, y); ctx.lineTo(x + 8 + len, y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x + 14 + len, y); ctx.lineTo(x + 6 + len, y - 5); ctx.lineTo(x + 6 + len, y + 5); ctx.fill();
+      ctx.font = '10px "IBM Plex Mono", monospace'; ctx.fillText('STIM', x + 10, y - 9);
+    }
+    if (S.relapseFlash > 0) {
+      ctx.globalAlpha = Math.min(1, S.relapseFlash);
+      ctx.fillStyle = C.path; ctx.fillText('RELAPSE', x - 30, y + 22);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  const pPathTxt = document.getElementById('pPathTxt'), pHealthTxt = document.getElementById('pHealthTxt');
+  const pPath = document.getElementById('pPath'), pHealth = document.getElementById('pHealth');
+  const nPulse = document.getElementById('nPulse'), nSwitch = document.getElementById('nSwitch');
+  let lastRead = 0;
+  function readout(force) {
+    const now = performance.now();
+    if (!force && now - lastRead < 200) return;
+    lastRead = now;
+    const pH = Math.round(sig(5 * S.ex) * 100);
+    pPathTxt.textContent = `Unhealthy ${100 - pH}%`; pHealthTxt.textContent = `Healthy ${pH}%`;
+    pPath.style.width = (100 - pH) + '%'; pHealth.style.width = pH + '%';
+    nPulse.textContent = S.pulses; nSwitch.textContent = S.switches;
+  }
+  let activeUntil = 0;
+  const poke = () => { activeUntil = performance.now() + 8000; };
+  document.getElementById('stimBtn').addEventListener('click', () => { stimulate(); poke(); readout(true); });
+  const loopBtn = document.getElementById('loopBtn'), loopLbl = document.getElementById('loopLbl');
+  loopBtn.addEventListener('click', () => {
+    S.loop = !S.loop; loopBtn.setAttribute('aria-pressed', String(S.loop));
+    loopLbl.textContent = S.loop ? 'Closed loop on' : 'Closed loop off'; poke();
+  });
+  document.getElementById('resetBtn').addEventListener('click', () => { reset(); poke(); readout(true); });
+
+  /* ================= Neuron spine + background network ================= */
+  const net = document.getElementById('net');
+  const wrap = document.getElementById('wrap');
+  let NET = fit(net, innerWidth, innerHeight);
+  let geo = null, pts = [], edges = [], frontDisp = null;
+
+  function measure() {
+    const sy = scrollY, wr = wrap.getBoundingClientRect();
+    const pl = parseFloat(getComputedStyle(wrap).paddingLeft);
+    const x = wr.left + pl * 0.34;
+    const nodes = [...document.querySelectorAll('[data-node]')].map(el => {
+      const r = el.getBoundingClientRect();
+      return { y: r.top + sy + r.height / 2, lx: r.left - 10 };
+    });
+    const branches = [...document.querySelectorAll('[data-branch]')].map(el => {
+      const r = el.getBoundingClientRect();
+      return { y: r.top + sy + 34, lx: r.left };
+    });
+    const docH = document.documentElement.scrollHeight;
+    geo = { x, nodes, branches, start: nodes[0].y, end: nodes[nodes.length - 1].y + 120 };
+    const W = innerWidth, count = Math.round(Math.min(150, docH / 55));
+    let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    pts = Array.from({ length: count }, () => ({ x: rnd() * W, y: rnd() * docH, r: 0.8 + rnd() * 1.4 }));
+    edges = [];
+    for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
+      if (Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y) < 170) edges.push([i, j]);
+    }
+    if (frontDisp === null) frontDisp = targetFront();
+  }
+  const targetFront = () => Math.max(geo.start, Math.min(geo.end, scrollY + innerHeight * 0.58));
+
+  function myelin(ctx, a, b, sy, color) {
+    if (b <= a) return;
+    ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let y = a; y < b; y += 54) { ctx.moveTo(geo.x, y - sy); ctx.lineTo(geo.x, Math.min(y + 46, b) - sy); }
+    ctx.stroke();
+  }
+
+  function drawNet(t) {
+    if (!geo) return;
+    const { ctx, w, h } = NET, sy = scrollY, x = geo.x;
+    ctx.clearRect(0, 0, w, h);
+    const tf = targetFront();
+    frontDisp = reduce ? tf : frontDisp + (tf - frontDisp) * 0.14;
+    const f = frontDisp;
+
+    for (const [i, j] of edges) {
+      const a = pts[i], b = pts[j];
+      if ((a.y < sy - 200 && b.y < sy - 200) || (a.y > sy + h + 200 && b.y > sy + h + 200)) continue;
+      const near = Math.max(0, 1 - Math.abs((a.y + b.y) / 2 - f) / 260);
+      ctx.strokeStyle = rgba(C.signal, 0.035 + near * 0.12); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y - sy); ctx.lineTo(b.x, b.y - sy); ctx.stroke();
+    }
+    for (const p of pts) {
+      if (p.y < sy - 20 || p.y > sy + h + 20) continue;
+      const near = Math.max(0, 1 - Math.abs(p.y - f) / 260);
+      ctx.fillStyle = near > 0.05 ? rgba(C.signal, 0.25 + near * 0.6) : rgba(C.muted, 0.22);
+      ctx.beginPath(); ctx.arc(p.x, p.y - sy, p.r + near * 1.2, 0, TAU); ctx.fill();
+    }
+
+    const nodes = geo.nodes;
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      const segA = i === 0 ? n.y : nodes[i - 1].y + 9;
+      if (i > 0) {
+        const gapTop = n.y - 40, gapBot = n.y - 20;
+        myelin(ctx, segA, gapTop - 6, sy, C.line);
+        myelin(ctx, segA, Math.min(gapTop - 6, f), sy, rgba(C.signal, 0.55));
+        const fired = f >= gapTop;
+        ctx.fillStyle = fired ? rgba(C.pulse, 0.9) : C.bg;
+        ctx.strokeStyle = fired ? C.pulse : C.line; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.ellipse(x, gapTop - 3, 6, 5, 0, 0, TAU); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = f >= gapBot ? C.signal : C.line; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(x, gapBot + 6, 7, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+        ctx.strokeStyle = f >= gapBot ? rgba(C.signal, 0.55) : C.line; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(x, gapBot + 2 - sy); ctx.lineTo(x, n.y - 9 - sy); ctx.stroke();
+        if (fired) {
+          const cyc = reduce ? 0.5 : ((t * 0.9 + i * 0.37) % 1.5) / 0.7;
+          if (cyc < 1) for (let k = 0; k < 6; k++) {
+            const off = (k - 2.5) * 2.2 * (0.5 + cyc);
+            ctx.fillStyle = rgba(C.pulse, 1 - cyc * 0.6);
+            ctx.beginPath(); ctx.arc(x + off, gapTop + 2 + cyc * (gapBot - gapTop + 2) - sy + (k % 2) * 2, 1.4, 0, TAU); ctx.fill();
+          }
+        }
+      }
+      const fired = f >= n.y - 1;
+      ctx.lineWidth = 1.5;
+      if (fired) {
+        ctx.fillStyle = C.signal; ctx.shadowColor = C.signal; ctx.shadowBlur = 16;
+        ctx.beginPath(); ctx.arc(x, n.y - sy, 6.5, 0, TAU); ctx.fill(); ctx.shadowBlur = 0;
+        const d = f - n.y;
+        if (d < 260) { ctx.strokeStyle = rgba(C.signal, 0.7 * (1 - d / 260)); ctx.beginPath(); ctx.arc(x, n.y - sy, 8 + d * 0.14, 0, TAU); ctx.stroke(); }
+      } else {
+        ctx.fillStyle = C.bg; ctx.strokeStyle = C.faint;
+        ctx.beginPath(); ctx.arc(x, n.y - sy, 6, 0, TAU); ctx.fill(); ctx.stroke();
+      }
+      if (n.lx > x + 14) {
+        ctx.strokeStyle = fired ? rgba(C.signal, 0.6) : C.line; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x + 9, n.y - sy); ctx.lineTo(n.lx, n.y - sy); ctx.stroke();
+      }
+    }
+
+    // dendritic branches reaching into the PhD and postdoc cards
+    geo.branches.forEach(b => {
+      const lit = f >= b.y;
+      const y0 = b.y - 30;
+      ctx.strokeStyle = lit ? rgba(C.signal, 0.75) : C.line; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x, y0 - sy); ctx.quadraticCurveTo(x + 4, b.y - sy, b.lx, b.y - sy); ctx.stroke();
+      // small dendritic spines along the branch
+      for (let k = 1; k <= 2; k++) {
+        const sx = x + (b.lx - x) * (k / 3), syy = b.y - sy - 2 * (k === 1 ? 1 : 0);
+        ctx.beginPath(); ctx.moveTo(sx, syy); ctx.lineTo(sx + 2, syy - 6); ctx.stroke();
+        ctx.fillStyle = lit ? C.signal : C.line; ctx.beginPath(); ctx.arc(sx + 2, syy - 7, 1.8, 0, TAU); ctx.fill();
+      }
+      ctx.fillStyle = lit ? C.signal : C.bg; ctx.strokeStyle = lit ? C.signal : C.faint; ctx.lineWidth = 1.5;
+      if (lit) { ctx.shadowColor = C.signal; ctx.shadowBlur = 12; }
+      ctx.beginPath(); ctx.arc(b.lx, b.y - sy, 4, 0, TAU); ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
+    });
+
+    // terminal arbor reaching the next neuron
+    const last = nodes[nodes.length - 1], lit = f >= last.y;
+    ctx.strokeStyle = lit ? rgba(C.signal, 0.6) : C.line; ctx.lineWidth = 1.6;
+    [[0, 70, 0], [0, 40, 26], [0, 58, -14], [22, 72, 38]].forEach(([dx, len, spread]) => {
+      ctx.beginPath(); ctx.moveTo(x, last.y + 9 - sy);
+      ctx.quadraticCurveTo(x + dx, last.y + len * 0.6 - sy, x + spread, last.y + len - sy); ctx.stroke();
+      ctx.fillStyle = lit ? C.pulse : C.line;
+      ctx.beginPath(); ctx.arc(x + spread, last.y + len - sy, 2.5, 0, TAU); ctx.fill();
+    });
+
+    // action potentials travelling down the lit fibre
+    const L = f - geo.start;
+    if (!reduce && L > 30) {
+      const spacing = 300, span = Math.ceil(L / spacing) * spacing;
+      for (let k = 0; k * spacing < span; k++) {
+        let s = (t * 260 + k * spacing) % span;
+        s = Math.floor(s / 54) * 54 + Math.min(46, (s % 54) * 1.6);
+        if (s > L) continue;
+        const y = geo.start + s - sy;
+        if (y < -30 || y > h + 30) continue;
+        const g = ctx.createLinearGradient(0, y - 26, 0, y);
+        g.addColorStop(0, rgba(C.signal, 0)); g.addColorStop(1, rgba(C.signal, 0.95));
+        ctx.strokeStyle = g; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(x, y - 26); ctx.lineTo(x, y); ctx.stroke();
+      }
+    }
+    if (f < geo.end - 2) {
+      const y = f - sy;
+      const rg = ctx.createRadialGradient(x, y, 0, x, y, 22);
+      rg.addColorStop(0, rgba(C.pulse, 0.9)); rg.addColorStop(0.3, rgba(C.pulse, 0.35)); rg.addColorStop(1, rgba(C.pulse, 0));
+      ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(x, y, 22, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#fff4e2'; ctx.beginPath(); ctx.arc(x, y, 2.6, 0, TAU); ctx.fill();
+    }
+  }
+
+  /* ================= Output: membrane trace ================= */
+  const out = [
+    { y: 2024.5, k: 'talk', ti: 'Mathematical model of coupled oscillators to predict the effects of phase-locked stimulation', a: 'Mirkhani, N., McNamara, C., Duchet, B., Oliviers, G., Sharott, A. & Bogacz, R.', v: 'International Conference on Mathematical Neuroscience, Dublin, 2024' },
+    { y: 2025.3, k: 'paper', ti: 'Response of neuronal populations to phase-locked stimulation: model-based predictions and validation', a: 'Mirkhani, N., McNamara, C.G., Oliviers, G., Sharott, A., Duchet, B. & Bogacz, R.', v: 'Journal of Neuroscience 45(15), 2025' },
+    { y: 2025.7, k: 'talk', ti: 'How Mathematical Models Help Predict and Optimize Brain Stimulation', a: 'Invited seminar', v: 'Department of Applied Mathematics, University of Leeds, 2025' },
+    { y: 2026.12, k: 'talk', ti: 'Understanding connectivity-driven response to phase-locked stimulation through predictive plasticity', a: 'Mirkhani, N., Duchet, B. & Bogacz, R.', v: '7th European Conference on Brain Stimulation in Mental Health, Naples, 2026' },
+    { y: 2026.3, k: 'paper', ti: 'Predictive dendrites as a foundation for biological learning', a: 'Song, Y., Innocenti, F., Mirkhani, N., et al.', v: 'bioRxiv preprint, 2026' },
+    { y: 2026.48, k: 'paper', ti: 'Dendrites as distributed predictors: robustness and information loss in associative memory', a: 'Mirkhani, N., Innocenti, F., Akerman, C. & Bogacz, R.', v: 'NeurIPS, under review, 2026' },
+    { y: 2026.66, k: 'paper', ti: 'From trade-offs to translation: an interdisciplinary roadmap for neurotechnology', a: 'Serrano, R.R.M., Troughton, J.G., Mirkhani, N., et al.', v: 'Science Advances 12(31), 2026' },
+    { y: 2026.84, k: 'talk', ti: 'From Instantaneous Modulation of Neural Oscillations to Long-Term Adaptation', a: 'Invited seminar', v: 'Surrey Sleep Research Centre, University of Surrey, 2026' }
+  ];
+  const earlier = [
+    [2024, 'Spatially selective delivery of living magnetic microrobots through torque-focusing', 'Nature Communications'],
+    [2024, 'Engineering living immunotherapeutic agents for improved cancer treatment', 'Advanced Therapeutics'],
+    [2022, 'Magnetic torque-driven living microrobots for increased tumor infiltration', 'Science Robotics'],
+    [2022, 'A theoretical examination of localized nanoscale induction by single domain magnetic particles', 'Journal of Applied Physics'],
+    [2021, 'Engineering cell-based systems for smart cancer therapy', 'Advanced Intelligent Systems'],
+    [2021, '3D magnetically controlled spatiotemporal probing and actuation of collagen networks from a single cell perspective', 'Lab on a Chip'],
+    [2020, 'Living, self-replicating ferrofluids for fluidic transport', 'Advanced Functional Materials'],
+    [2020, 'A pulsatile flow system to engineer aneurysm and atherosclerosis mimetic extracellular matrix', 'Advanced Science'],
+    [2019, 'Synthetic and living micropropellers for convection-enhanced nanoparticle transport', 'Science Advances'],
+    [2016, 'Non-Newtonian blood flow simulation of diastolic phase in bileaflet mechanical heart valve implanted in a realistic aortic root containing coronary arteries', 'Artificial Organs'],
+    [2016, 'On-X heart valve prosthesis: numerical simulation of hemodynamic performance in accelerating systole', 'Cardiovascular Engineering and Technology']
+  ];
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const bold = a => esc(a).replace('Mirkhani, N.', '<b>Mirkhani, N.</b>');
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const mkIn = parent => (tag, attrs, into = parent) => { const e = document.createElementNS(svgNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); into.appendChild(e); return e; };
+  let selected = 1;
+  const train = document.getElementById('train'), detail = document.getElementById('pubDetail');
+  function showDetail(i) {
+    const p = out[i], col = p.k === 'paper' ? 'var(--signal)' : 'var(--pulse)';
+    detail.innerHTML = `<span class="mono" style="color:${col}">${p.k === 'paper' ? 'Paper' : 'Talk'} · ${Math.floor(p.y)}</span><span class="t">${esc(p.ti)}</span><span class="a">${bold(p.a)}</span><span class="a"><i>${esc(p.v)}</i></span>`;
+  }
+  function buildTrain() {
+    train.innerHTML = '';
+    const mk = mkIn(train);
+    const defs = mk('defs', {});
+    const flt = mk('filter', { id: 'glow', x: '-50%', y: '-50%', width: '200%', height: '200%' }, defs);
+    mk('feGaussianBlur', { stdDeviation: 2.5, result: 'b' }, flt);
+    const merge = mk('feMerge', {}, flt); mk('feMergeNode', { in: 'b' }, merge); mk('feMergeNode', { in: 'SourceGraphic' }, merge);
+    const X0 = 40, X1 = 780, Y0 = 2023.3, Y1 = 2027, base = 126;
+    const xs = y => X0 + (y - Y0) / (Y1 - Y0) * (X1 - X0);
+    mk('line', { x1: X0, x2: X1, y1: base, y2: base, stroke: C.line, 'stroke-dasharray': '2 4' });
+    const vl = mk('text', { x: 0, y: base + 4, fill: C.faint, 'font-size': 10, 'font-family': 'IBM Plex Mono, monospace' }); vl.textContent = 'Vm';
+    for (let y = 2024; y <= 2026; y++) {
+      mk('line', { x1: xs(y), x2: xs(y), y1: 150, y2: 156, stroke: C.faint });
+      const t = mk('text', { x: xs(y), y: 172, fill: C.muted, 'font-size': 10, 'text-anchor': 'middle', 'font-family': 'IBM Plex Mono, monospace' }); t.textContent = y;
+    }
+    mk('line', { x1: X0, x2: X1, y1: 150, y2: 150, stroke: C.line });
+    mk('line', { x1: xs(2023.37), x2: xs(2023.37), y1: 22, y2: 150, stroke: C.faint, 'stroke-dasharray': '2 3' });
+    const jt = mk('text', { x: xs(2023.37) + 6, y: 30, fill: C.faint, 'font-size': 9, 'font-family': 'IBM Plex Mono, monospace', 'letter-spacing': 1 }); jt.textContent = 'MAY 2023 · JOINS OXFORD';
+    const ap = (x, top) => `L${x - 8} ${base} C${x - 5} ${base - 2} ${x - 3} ${base - 6} ${x - 2} ${base - 10} L${x} ${top} L${x + 3} ${base + 14} C${x + 6} ${base + 16} ${x + 10} ${base + 6} ${x + 16} ${base}`;
+    let d = `M${X0} ${base}`;
+    out.forEach(p => { d += ap(xs(p.y), p.k === 'paper' ? 40 : 82); });
+    d += ` L${X1} ${base}`;
+    mk('path', { d, fill: 'none', stroke: C.muted, 'stroke-width': 1.4, 'stroke-linejoin': 'round', opacity: .55 });
+    out.forEach((p, i) => {
+      const x = xs(p.y), top = p.k === 'paper' ? 40 : 82, col = p.k === 'paper' ? C.signal : C.pulse, on = i === selected;
+      const g = mk('g', { class: 'spike', tabindex: 0, role: 'button', 'aria-label': `${p.k === 'paper' ? 'Paper' : 'Talk'}, ${Math.floor(p.y)}: ${p.ti}` });
+      mk('rect', { x: x - 12, y: top - 12, width: 28, height: base - top + 30, fill: 'transparent' }, g);
+      const path = mk('path', { d: `M${x - 8} ${base} ` + ap(x, top).slice(1), fill: 'none', stroke: col, 'stroke-width': on ? 2.6 : 1.6, 'stroke-linejoin': 'round' }, g);
+      if (on) { path.setAttribute('filter', 'url(#glow)'); mk('circle', { cx: x, cy: top - 9, r: 3.5, fill: col }, g); }
+      const pick = () => { selected = i; buildTrain(); showDetail(i); const el = train.querySelectorAll('.spike')[i]; el && el.focus({ preventScroll: true }); };
+      g.addEventListener('click', pick);
+      g.addEventListener('mouseenter', () => { if (matchMedia('(hover: hover)').matches) showDetail(i); });
+      g.addEventListener('mouseleave', () => showDetail(selected));
+      g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+    });
+  }
+  function buildLists() {
+    document.getElementById('pubList').innerHTML = out.filter(p => p.k === 'paper').sort((a, b) => b.y - a.y).map(p =>
+      `<li><span class="y">${Math.floor(p.y)}</span><div><div class="ti">${esc(p.ti)}</div><div class="au">${bold(p.a)}</div><div class="ve">${esc(p.v.replace(/, \d{4}$/, ''))}</div></div></li>`).join('');
+    document.getElementById('earlierList').innerHTML = earlier.map(([y, t, v]) =>
+      `<li><span class="y">${y}</span><div><div>${esc(t)}</div><div class="ve">${esc(v)}</div></div></li>`).join('');
+    const det = document.querySelector('details.earlier'), chev = det.querySelector('.chev');
+    det.addEventListener('toggle', () => { chev.textContent = det.open ? 'Hide' : 'Show'; });
+  }
+
+  const copyBtn = document.getElementById('copyBtn');
+  copyBtn.addEventListener('click', () => {
+    const txt = document.getElementById('email').textContent;
+    const done = () => { copyBtn.textContent = 'Copied'; setTimeout(() => copyBtn.textContent = 'Copy email', 1600); };
+    const fallback = () => { const r = document.createRange(); r.selectNodeContents(document.getElementById('email')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); copyBtn.textContent = 'Selected, press Ctrl+C'; };
+    try { navigator.clipboard.writeText(txt).then(done, fallback); } catch (e) { fallback(); }
+  });
+
+  /* ================= run ================= */
+  buildTrain(); showDetail(selected); buildLists();
+  buildLandscape(); measure();
+  drawSignals(); drawState(); readout(true); drawNet(0);
+  const t0 = performance.now();
+  function frame(now) {
+    if (!reduce || now < activeUntil) { stepSim(); drawSignals(); drawState(); readout(); }
+    drawNet((now - t0) / 1000);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  const relayout = () => {
+    SG = fit(sigC); ST = fit(stC); NET = fit(net, innerWidth, innerHeight);
+    buildLandscape(); measure(); drawSignals(); drawState();
+  };
+  new ResizeObserver(relayout).observe(wrap);
+  addEventListener('resize', relayout);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(relayout);
+})();
+</script>
+</body>
+</html>
